@@ -59,6 +59,21 @@ voice-shopping-assistant/
     └── .env.example
 ```
 
+<<<<<<< HEAD
+=======
+## 🚀 Installation
+
+### Prerequisites
+- Node.js 18+
+- Python 3.12+
+- A free [Gemini API key](https://aistudio.google.com/app/apikey) (optional — the app falls back to a rule-based parser without one)
+
+### Clone
+```bash
+git clone <your-repo-url>
+cd voice-shopping-assistant
+```
+>>>>>>> master
 
 ## 🔑 Environment Variables
 
@@ -98,6 +113,24 @@ npm run dev
 
 App available at `http://localhost:5173`. Use Chrome or Edge for the best Web Speech API support.
 
+<<<<<<< HEAD
+=======
+## ☁️ Deployment
+
+**Backend (Render):**
+1. Push the `backend/` folder to a GitHub repo.
+2. Create a new **Web Service** on Render, point it at the repo.
+3. Build command: `pip install -r requirements.txt`
+4. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+5. Add `GEMINI_API_KEY`, `DATABASE_URL`, and `ALLOWED_ORIGINS` (your Vercel URL) as environment variables.
+
+**Frontend (Vercel):**
+1. Push the `frontend/` folder to a GitHub repo (or import the monorepo with root directory `frontend`).
+2. Framework preset: Vite.
+3. Add `VITE_API_BASE_URL` pointing to your deployed Render backend (e.g. `https://your-app.onrender.com/api`).
+4. Deploy.
+
+>>>>>>> master
 ## 📡 API Documentation
 
 | Method | Endpoint | Description |
