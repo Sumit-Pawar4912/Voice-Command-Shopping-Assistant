@@ -6,22 +6,31 @@ English, Hindi, or Marathi) into a small, structured JSON object describing
 what the user wants to do. Gemini never touches the database - all
 persistence happens in crud.py after this module has produced clean,
 validated JSON.
+
+Uses Google's current unified `google-genai` SDK (the older
+`google-generativeai` package is deprecated/EOL).
 """
 
 import json
 import logging
 import re
 
-import google.generativeai as genai
+from google import genai
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_model = None
+_client = None
 if settings.gemini_api_key:
-    genai.configure(api_key=settings.gemini_api_key)
-    _model = genai.GenerativeModel("gemini-1.5-flash")
+    _client = genai.Client(api_key=settings.gemini_api_key)
+
+# Use a current, stable model. "gemini-2.5-flash" is the fast/cost-efficient
+# workhorse model as of 2026. If this ever 404s again, run:
+#   from google import genai; c = genai.Client(api_key="...")
+#   for m in c.models.list(): print(m.name)
+# and swap in whatever current model name is returned.
+MODEL_NAME = "gemini-2.5-flash"
 
 # The system prompt instructs Gemini to act purely as an NLU layer and to
 # ALWAYS reply with a single JSON object - nothing else.
@@ -48,6 +57,8 @@ Rules:
 - For "update milk quantity to five", action="update", item="milk", quantity=5.
 - For "find toothpaste under 200" or "find organic apples", action="search", item is the \
   product, and max_price is the numeric limit if mentioned.
+- If a brand name is mentioned (e.g. "Colgate", "Amul"), extract it into "brand" and keep \
+  "item" as the general product name (e.g. item="toothpaste", brand="Colgate").
 - For "clear the list" / "empty my list", action="clear" and item=null.
 - If you cannot confidently understand the command, action="unknown".
 - Respond with ONLY the JSON object, no other text.
@@ -64,6 +75,9 @@ Output: {"action":"update","item":"milk","quantity":5,"category":null,"brand":nu
 
 Input: "Find organic apples under 500"
 Output: {"action":"search","item":"organic apples","quantity":null,"category":null,"brand":null,"max_price":500}
+
+Input: "Find Colgate toothpaste under 200"
+Output: {"action":"search","item":"toothpaste","quantity":null,"category":null,"brand":"Colgate","max_price":200}
 """
 
 REQUIRED_KEYS = {"action", "item", "quantity", "category", "brand", "max_price"}
@@ -172,13 +186,13 @@ async def interpret_command(text: str, language: str = "en") -> dict:
     Falls back to a rule-based parser if Gemini is not configured or fails,
     so the application keeps working without an API key.
     """
-    if not _model:
+    if not _client:
         logger.info("GEMINI_API_KEY not set - using rule-based fallback parser.")
         return rule_based_fallback(text)
 
     try:
         prompt = f"{SYSTEM_PROMPT}\n\nInput (language={language}): \"{text}\"\nOutput:"
-        response = _model.generate_content(prompt)
+        response = _client.models.generate_content(model=MODEL_NAME, contents=prompt)
         raw_text = response.text
         data = _extract_json(raw_text)
         return _normalize_result(data)
